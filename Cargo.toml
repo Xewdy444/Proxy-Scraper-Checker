@@ -13,6 +13,7 @@ categories = ["command-line-utilities", "networking", "internet-tools"]
 
 [profile.release]
 codegen-units = 1
+strip = true
 lto = "fat"
 
 [dependencies]
