@@ -11,7 +11,7 @@ use std::time::Duration;
 use tokio::sync::Semaphore;
 
 /// Represents a proxy, which can be either an HTTP or SOCKS5 proxy.
-#[derive(Debug, Hash, Eq, PartialEq)]
+#[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub enum Proxy {
     Http(String),
     Socks5(String),
@@ -34,7 +34,7 @@ impl Proxy {
     /// use proxy_utilities::Proxy;
     ///
     /// let proxy = Proxy::Http("45.72.163.56:8080".to_string());
-    /// assert_eq!(proxy.url(), "http://45.72.163.56:8080");
+    /// assert_eq!(proxy.url(), "http://45.72.163.56:8080".to_string());
     /// ```
     fn url(&self) -> String {
         match self {
@@ -74,7 +74,7 @@ impl Proxies {
     /// let mut proxies = Proxies::new();
     /// let proxy = Proxy::Http("45.72.163.56:8080".to_string());
     ///
-    /// assert!(proxies.add(proxy));
+    /// assert!(proxies.add(proxy.clone()));
     /// assert!(!proxies.add(proxy));
     /// ```
     pub fn add(&mut self, proxy: Proxy) -> bool {
