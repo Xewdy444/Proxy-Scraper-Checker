@@ -9,7 +9,7 @@ readme = "README.md"
 homepage = "https://github.com/Xewdy444/Proxy-Scraper-Checker"
 repository = "https://github.com/Xewdy444/Proxy-Scraper-Checker"
 keywords = ["proxies", "scraping", "checking", "networking", "security", "automation"]
-categories = ["command-line-utilities", "networking", "internet-tools"]
+categories = ["command-line-utilities"]
 
 [profile.release]
 codegen-units = 1
