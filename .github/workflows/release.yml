@@ -2,7 +2,7 @@ name: Add Release Artifacts to GitHub Releases
 
 on:
   release:
-    types: [published]
+    types: [created]
 
 jobs:
   release:
