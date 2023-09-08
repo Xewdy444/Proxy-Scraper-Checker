@@ -24,6 +24,7 @@ jobs:
         uses: rust-build/rust-build.action@v1.4.3
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          TOOLCHAIN_VERSION: 1.70.0
         with:
           RUSTTARGET: ${{ matrix.target }}
           ARCHIVE_TYPES: ${{ matrix.archive }}
