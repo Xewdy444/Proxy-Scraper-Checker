@@ -1,5 +1,5 @@
 # Proxy-Scraper-Checker
-A command-line tool written in Rust for scraping and checking HTTP and SOCKS5 proxies from the checkerproxy.net proxies archive. The working proxies are written to `Proxies/http.txt` and `Proxies/socks5.txt` according to the respective proxy type.
+A command-line tool written in Rust for scraping and checking HTTP and SOCKS5 proxies from the [checkerproxy.net proxies archive](https://checkerproxy.net/getAllProxy). The working proxies are written to `Proxies/http.txt` and `Proxies/socks5.txt` according to the respective proxy type.
 
 ![image](https://user-images.githubusercontent.com/95155966/231937289-ddf0187f-e8c9-4878-b92d-96617695e6f0.png)
 
