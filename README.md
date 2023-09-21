@@ -3,10 +3,10 @@ A command-line tool written in Rust for scraping and checking HTTP and SOCKS5 pr
 
 ![image](https://user-images.githubusercontent.com/95155966/231937289-ddf0187f-e8c9-4878-b92d-96617695e6f0.png)
 
-# Build
+## Build
     $ cargo build --release
 
-# Usage
+## Usage
 > **Note**
 > If the program finishes checking the proxies in just a few seconds, that probably means that the `tasks` value is set too high. You can also try increasing your system's open file limit.
 
