@@ -27,15 +27,6 @@ impl fmt::Display for Proxy {
 
 impl Proxy {
     /// Returns the URL of the proxy.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use proxy_utilities::Proxy;
-    ///
-    /// let proxy = Proxy::Http("45.72.163.56:8080".to_string());
-    /// assert_eq!(proxy.url(), "http://45.72.163.56:8080".to_string());
-    /// ```
     fn url(&self) -> String {
         match self {
             Proxy::Http(_) => format!("http://{}", self),
@@ -62,21 +53,9 @@ impl Proxies {
 
     /// Adds a proxy to the respective proxy list.
     ///
-    /// # Returns
+    /// ## Returns
     ///
     /// `true` if the proxy was added, `false` if it was already present.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use proxy_utilities::{Proxy, Proxies};
-    ///
-    /// let mut proxies = Proxies::new();
-    /// let proxy = Proxy::Http("45.72.163.56:8080".to_string());
-    ///
-    /// assert!(proxies.add(proxy.clone()));
-    /// assert!(!proxies.add(proxy));
-    /// ```
     pub fn add(&mut self, proxy: Proxy) -> bool {
         match proxy {
             Proxy::Http(_) => self.http.insert(proxy),
@@ -97,85 +76,108 @@ impl FromIterator<Proxy> for Proxies {
     }
 }
 
-/// Scrapes the archive URLs from the https://checkerproxy.net/getAllProxy page
-/// and converts them into the API URLs.
-///
-/// # Returns
-///
-/// A `Vec` of the API URLs.
-///
-/// # Errors
-///
-/// Returns an error if the request to the https://checkerproxy.net/getAllProxy page fails
-/// or if the HTML could not be parsed.
-pub async fn scrape_archive_urls() -> Result<Vec<String>, Box<dyn Error>> {
-    let response = reqwest::get("https://checkerproxy.net/getAllProxy").await?;
-    let html = response.text().await?;
-
-    let parser = Html::parse_document(&html);
-    let selector = Selector::parse("li > a")?;
-    let mut archive_urls = Vec::new();
-
-    for element in parser.select(&selector) {
-        let uri_path = match element.value().attr("href") {
-            Some(path) => path,
-            None => continue,
-        };
-
-        if !uri_path.contains("/archive/") {
-            continue;
-        }
-
-        let url = format!("https://checkerproxy.net/api{}", uri_path);
-        archive_urls.push(url);
-    }
-
-    Ok(archive_urls)
+/// Used to scrape proxies from the checkerproxy.net proxies archive.
+#[derive(Clone, Debug)]
+pub struct ProxyScraper {
+    client: reqwest::Client,
 }
 
-/// Scrapes the proxies from the given checkerproxy.net archive API URL.
-///
-/// # Returns
-///
-/// A `Vec` of the scraped proxies.
-///
-/// # Errors
-///
-/// Returns an error if the request to the archive API URL fails or
-/// if the JSON received is invalid.
-pub async fn scrape_proxies(
-    archive_url: String,
-) -> Result<Vec<Proxy>, Box<dyn Error + Send + Sync>> {
-    let response = reqwest::get(archive_url).await?;
-    let json: Value = serde_json::from_str(&response.text().await?)?;
-    let mut proxies = Vec::new();
-
-    for proxy_dict in json
-        .as_array()
-        .ok_or("Invalid JSON received from archive API URL")?
-    {
-        let address = match proxy_dict.get("addr") {
-            Some(value) => match value.as_str() {
-                Some(str_value) => str_value.to_string(),
-                None => continue,
-            },
-            None => continue,
-        };
-
-        let proxy = match proxy_dict.get("type") {
-            Some(value) => match value.as_u64() {
-                Some(1) => Proxy::Http(address),
-                Some(2) => Proxy::Http(address),
-                Some(4) => Proxy::Socks5(address),
-                _ => continue,
-            },
-            None => continue,
-        };
-
-        proxies.push(proxy);
+impl ProxyScraper {
+    /// Creates a new `ProxyScraper` instance.
+    pub fn new() -> Self {
+        Self {
+            client: reqwest::Client::builder()
+                .timeout(Duration::from_secs(30))
+                .build()
+                .unwrap(),
+        }
     }
 
-    Ok(proxies)
+    /// Scrapes the archive URLs from the https://checkerproxy.net/getAllProxy page
+    /// and converts them into the API URLs.
+    ///
+    /// ## Returns
+    ///
+    /// A `Vec` of the API URLs.
+    ///
+    /// ## Errors
+    ///
+    /// Returns an error if the request to the https://checkerproxy.net/getAllProxy page fails
+    /// or if the HTML could not be parsed.
+    pub async fn scrape_archive_urls(&self) -> Result<Vec<String>, Box<dyn Error>> {
+        let response = self
+            .client
+            .get("https://checkerproxy.net/getAllProxy")
+            .send()
+            .await?;
+
+        let html = response.text().await?;
+        let parser = Html::parse_document(&html);
+        let selector = Selector::parse("li > a")?;
+        let mut archive_urls = Vec::new();
+
+        for element in parser.select(&selector) {
+            let uri_path = match element.value().attr("href") {
+                Some(path) => path,
+                None => continue,
+            };
+
+            if !uri_path.contains("/archive/") {
+                continue;
+            }
+
+            let url = format!("https://checkerproxy.net/api{}", uri_path);
+            archive_urls.push(url);
+        }
+
+        Ok(archive_urls)
+    }
+
+    /// Scrapes the proxies from the given checkerproxy.net archive API URL.
+    ///
+    /// ## Returns
+    ///
+    /// A `Vec` of the scraped proxies.
+    ///
+    /// ## Errors
+    ///
+    /// Returns an error if the request to the archive API URL fails or
+    /// if the JSON received is invalid.
+    pub async fn scrape_proxies(
+        &self,
+        archive_url: String,
+    ) -> Result<Vec<Proxy>, Box<dyn Error + Send + Sync>> {
+        let response = self.client.get(archive_url).send().await?;
+        let json: Value = serde_json::from_str(&response.text().await?)?;
+        let mut proxies = Vec::new();
+
+        for proxy_dict in json
+            .as_array()
+            .ok_or("Invalid JSON received from archive API URL")?
+        {
+            let address = match proxy_dict.get("addr") {
+                Some(value) => match value.as_str() {
+                    Some(str_value) => str_value.to_string(),
+                    None => continue,
+                },
+                None => continue,
+            };
+
+            let proxy = match proxy_dict.get("type") {
+                Some(value) => match value.as_u64() {
+                    Some(1) => Proxy::Http(address),
+                    Some(2) => Proxy::Http(address),
+                    Some(4) => Proxy::Socks5(address),
+                    _ => continue,
+                },
+                None => continue,
+            };
+
+            proxies.push(proxy);
+        }
+
+        Ok(proxies)
+    }
 }
 
 /// Used to check a collection of proxies.
@@ -188,7 +190,7 @@ pub struct ProxyChecker {
 impl ProxyChecker {
     /// Creates a new `ProxyChecker` instance.
     ///
-    /// # Parameters
+    /// ## Parameters
     ///
     /// * `semaphore` - The semaphore used to limit the number of concurrent requests.
     /// * `progress_bar` - The progress bar used to display the progress of the proxy checks.
@@ -201,17 +203,17 @@ impl ProxyChecker {
 
     /// Checks if the given proxy is working by making an HTTP request to the given URL.
     ///
-    /// # Parameters
+    /// ## Parameters
     ///
     /// * `proxy` - The proxy to check.
     /// * `url` - The URL that the proxy will be checked against.
     /// * `timeout` - The request timeout in seconds.
     ///
-    /// # Returns
+    /// ## Returns
     ///
     /// A `Result` containing the proxy if the check succeeds, or an `Err` if an error occurs.
     ///
-    /// # Errors
+    /// ## Errors
     ///
     /// An error is returned if the `reqwest::Client` cannot be built, if the request fails,
     /// or if the HTTP response is an error status code.
@@ -231,18 +233,18 @@ impl ProxyChecker {
 
     /// Checks if the given proxies are working by making an HTTP request to the given URL.
     ///
-    /// # Parameters
+    /// ## Parameters
     ///
     /// * `proxies` - A set of proxies to check.
     /// * `url` - The URL that the proxies will be checked against.
     /// * `timeout` - The request timeout in seconds.
     ///
-    /// # Returns
+    /// ## Returns
     ///
     /// A `Result` containing a `Vec` of the working proxies if the checks succeed,
     /// or an `Err` if an error occurs.
     ///
-    /// # Errors
+    /// ## Errors
     ///
     /// An error is returned if the `tokio::try_join_all` fails.
     pub async fn check_proxies(

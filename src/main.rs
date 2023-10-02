@@ -3,7 +3,7 @@ mod proxy_utilities;
 use clap::{command, Parser};
 use futures::future;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-use proxy_utilities::{Proxies, ProxyChecker};
+use proxy_utilities::{Proxies, ProxyChecker, ProxyScraper};
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 use std::path::Path;
@@ -39,8 +39,10 @@ struct Args {
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
+    let proxy_scraper = ProxyScraper::new();
 
-    let archive_urls = proxy_utilities::scrape_archive_urls()
+    let archive_urls = proxy_scraper
+        .scrape_archive_urls()
         .await
         .expect("Failed to scrape archive URLs");
 
@@ -56,10 +58,11 @@ async fn main() {
     let mut scrape_tasks = Vec::new();
 
     for url in archive_urls {
+        let proxy_scraper = proxy_scraper.clone();
         let progress_bar = scrape_progress_bar.clone();
 
         let task = tokio::spawn(async move {
-            let result = proxy_utilities::scrape_proxies(url).await;
+            let result = proxy_scraper.scrape_proxies(url).await;
             progress_bar.inc(1);
             result
         });
