@@ -27,6 +27,10 @@ struct Args {
     #[arg(long, default_value_t = 30)]
     timeout: u16,
 
+    /// Only check anonymous proxies
+    #[arg(long, default_value_t = false)]
+    anonymous: bool,
+
     /// Only check HTTP proxies
     #[arg(long, default_value_t = false, conflicts_with = "socks5")]
     http: bool,
@@ -39,7 +43,7 @@ struct Args {
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
-    let proxy_scraper = ProxyScraper::new();
+    let proxy_scraper = ProxyScraper::default();
 
     let archive_urls = proxy_scraper
         .scrape_archive_urls()
@@ -62,7 +66,7 @@ async fn main() {
         let progress_bar = scrape_progress_bar.clone();
 
         let task = tokio::spawn(async move {
-            let result = proxy_scraper.scrape_proxies(url).await;
+            let result = proxy_scraper.scrape_proxies(url, args.anonymous).await;
             progress_bar.inc(1);
             result
         });

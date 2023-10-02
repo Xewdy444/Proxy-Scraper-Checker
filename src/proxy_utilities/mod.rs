@@ -36,6 +36,11 @@ impl Proxy {
 }
 
 /// A collection of unique HTTP and SOCKS5 proxies.
+///
+/// ## Fields
+///
+/// * `http` - A `HashSet` of unique HTTP proxies.
+/// * `socks5` - A `HashSet` of unique SOCKS5 proxies.
 #[derive(Debug)]
 pub struct Proxies {
     pub http: HashSet<Proxy>,
@@ -44,6 +49,10 @@ pub struct Proxies {
 
 impl Proxies {
     /// Creates a new `Proxies` instance.
+    ///
+    /// ## Returns
+    ///
+    /// A `Proxies` instance.
     pub fn new() -> Self {
         Self {
             http: HashSet::new(),
@@ -52,6 +61,10 @@ impl Proxies {
     }
 
     /// Adds a proxy to the respective proxy list.
+    ///
+    /// ## Parameters
+    ///
+    /// * `proxy` - The proxy to add.
     ///
     /// ## Returns
     ///
@@ -77,6 +90,10 @@ impl FromIterator<Proxy> for Proxies {
 }
 
 /// Used to scrape proxies from the checkerproxy.net proxies archive.
+///
+/// ## Fields
+///
+/// * `client` - The `reqwest::Client` to use for making requests.
 #[derive(Clone, Debug)]
 pub struct ProxyScraper {
     client: reqwest::Client,
@@ -84,13 +101,16 @@ pub struct ProxyScraper {
 
 impl ProxyScraper {
     /// Creates a new `ProxyScraper` instance.
-    pub fn new() -> Self {
-        Self {
-            client: reqwest::Client::builder()
-                .timeout(Duration::from_secs(30))
-                .build()
-                .unwrap(),
-        }
+    ///
+    /// ## Parameters
+    ///
+    /// * `client` - The `reqwest::Client` to use for making requests.
+    ///
+    /// ## Returns
+    ///
+    /// A `ProxyScraper` instance.
+    pub fn new(client: reqwest::Client) -> Self {
+        Self { client }
     }
 
     /// Scrapes the archive URLs from the https://checkerproxy.net/getAllProxy page
@@ -135,6 +155,11 @@ impl ProxyScraper {
 
     /// Scrapes the proxies from the given checkerproxy.net archive API URL.
     ///
+    /// ## Parameters
+    ///
+    /// * `archive_url` - The archive API URL to scrape the proxies from.
+    /// * `anonymous` - Whether to only scrape anonymous proxies.
+    ///
     /// ## Returns
     ///
     /// A `Vec` of the scraped proxies.
@@ -146,6 +171,7 @@ impl ProxyScraper {
     pub async fn scrape_proxies(
         &self,
         archive_url: String,
+        anonymous: bool,
     ) -> Result<Vec<Proxy>, Box<dyn Error + Send + Sync>> {
         let response = self.client.get(archive_url).send().await?;
         let json: Value = serde_json::from_str(&response.text().await?)?;
@@ -155,6 +181,20 @@ impl ProxyScraper {
             .as_array()
             .ok_or("Invalid JSON received from archive API URL")?
         {
+            if anonymous {
+                let kind = match proxy_dict.get("kind") {
+                    Some(value) => match value.as_u64() {
+                        Some(value) => value,
+                        None => continue,
+                    },
+                    None => continue,
+                };
+
+                if kind != 2 {
+                    continue;
+                }
+            }
+
             let address = match proxy_dict.get("addr") {
                 Some(value) => match value.as_str() {
                     Some(str_value) => str_value.to_string(),
@@ -180,7 +220,28 @@ impl ProxyScraper {
     }
 }
 
+impl Default for ProxyScraper {
+    /// Creates a new `ProxyScraper` instance with the default `reqwest::Client`.
+    ///
+    /// ## Returns
+    ///
+    /// A `ProxyScraper` instance.
+    fn default() -> Self {
+        Self::new(
+            reqwest::Client::builder()
+                .timeout(Duration::from_secs(30))
+                .build()
+                .unwrap(),
+        )
+    }
+}
+
 /// Used to check a collection of proxies.
+///
+/// ## Fields
+///
+/// * `semaphore` - The semaphore used to limit the number of concurrent requests.
+/// * `progress_bar` - The progress bar used to display the progress of the proxy checks.
 #[derive(Debug)]
 pub struct ProxyChecker {
     semaphore: Arc<Semaphore>,
@@ -194,6 +255,10 @@ impl ProxyChecker {
     ///
     /// * `semaphore` - The semaphore used to limit the number of concurrent requests.
     /// * `progress_bar` - The progress bar used to display the progress of the proxy checks.
+    ///
+    /// ## Returns
+    ///
+    /// A `ProxyChecker` instance.
     pub fn new(semaphore: Arc<Semaphore>, progress_bar: ProgressBar) -> Self {
         Self {
             semaphore,
