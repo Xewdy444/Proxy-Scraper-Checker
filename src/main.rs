@@ -28,7 +28,7 @@ struct Args {
     timeout: u16,
 
     /// Only check anonymous proxies
-    #[arg(long, default_value_t = false)]
+    #[arg(short, long, default_value_t = false)]
     anonymous: bool,
 
     /// Only check HTTP proxies

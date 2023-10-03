@@ -19,7 +19,7 @@ Options:
   -u, --url <URL>          The URL to check the proxies against [default: https://httpbin.org/ip]     
       --tasks <TASKS>      The number of tasks to run concurrently for checking proxies [default: 512]
       --timeout <TIMEOUT>  The proxy request timeout in seconds [default: 30]
-      --anonymous          Only check anonymous proxies
+  -a, --anonymous          Only check anonymous proxies
       --http               Only check HTTP proxies
       --socks5             Only check SOCKS5 proxies
   -h, --help               Print help
