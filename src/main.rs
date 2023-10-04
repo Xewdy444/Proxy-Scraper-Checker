@@ -3,12 +3,52 @@ mod proxy_utilities;
 use clap::{command, Parser};
 use futures::future;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-use proxy_utilities::{Proxies, ProxyChecker, ProxyScraper};
+use proxy_utilities::{Proxies, Proxy, ProxyChecker, ProxyScraper, ProxyType};
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 use std::path::Path;
 use std::sync::Arc;
+use std::time;
+use tabled::builder::Builder;
+use tabled::settings::{Alignment, Style};
 use tokio::sync::Semaphore;
+
+/// A struct representing the result of a check task
+#[derive(Debug)]
+struct CheckTaskResult {
+    proxy_type: ProxyType,
+    working_proxies: Vec<Proxy>,
+    proxies_checked: u64,
+    elapsed_time: time::Duration,
+}
+
+impl CheckTaskResult {
+    /// Creates a new `CheckTaskResult` instance
+    ///
+    /// # Arguments
+    ///
+    /// * `proxy_type` - The type of proxies that were checked
+    /// * `working_proxies` - The working proxies
+    /// * `proxies_checked` - The number of proxies that were checked
+    /// * `elapsed_time` - The elapsed time
+    ///
+    /// # Returns
+    ///
+    /// A new `CheckTaskResult` instance
+    fn new(
+        proxy_type: ProxyType,
+        working_proxies: Vec<Proxy>,
+        proxies_checked: u64,
+        elapsed_time: std::time::Duration,
+    ) -> Self {
+        Self {
+            proxy_type,
+            working_proxies,
+            proxies_checked,
+            elapsed_time,
+        }
+    }
+}
 
 #[derive(Debug, Parser)]
 #[command(
@@ -89,8 +129,10 @@ async fn main() {
     let mut check_tasks = Vec::new();
 
     if !args.socks5 {
+        let proxy_count = proxies.http.len() as u64;
+
         let http_progress_bar = multiprogress_bar.add(
-            ProgressBar::new(proxies.http.len() as u64).with_style(
+            ProgressBar::new(proxy_count).with_style(
                 ProgressStyle::default_bar()
                     .template(
                         "[{msg}] {spinner:.green} {percent}% [{wide_bar:.green}] {pos}/{len} [{elapsed_precise}<{eta_precise}, {per_sec}]",
@@ -106,21 +148,24 @@ async fn main() {
             let proxy_checker = ProxyChecker::new(http_semaphore, http_progress_bar.clone());
             http_progress_bar.set_message("Checking HTTP proxies");
 
-            let proxies = proxy_checker
+            let working_proxies = proxy_checker
                 .check_proxies(proxies.http, url, args.timeout)
                 .await
                 .expect("Failed to check HTTP proxies");
 
             http_progress_bar.finish_with_message("Finished checking HTTP proxies");
-            proxies
+            let elapsed_time = time::Duration::from_secs(http_progress_bar.elapsed().as_secs());
+            CheckTaskResult::new(ProxyType::Http, working_proxies, proxy_count, elapsed_time)
         });
 
         check_tasks.push(http_task);
     }
 
     if !args.http {
+        let proxy_count = proxies.socks5.len() as u64;
+
         let socks5_progress_bar = multiprogress_bar.add(
-            ProgressBar::new(proxies.socks5.len() as u64).with_style(
+            ProgressBar::new(proxy_count).with_style(
                 ProgressStyle::default_bar()
                     .template(
                         "[{msg}] {spinner:.blue} {percent}% [{wide_bar:.blue}] {pos}/{len} [{elapsed_precise}<{eta_precise}, {per_sec}]",
@@ -136,23 +181,29 @@ async fn main() {
             let proxy_checker = ProxyChecker::new(socks5_semaphore, socks5_progress_bar.clone());
             socks5_progress_bar.set_message("Checking SOCKS5 proxies");
 
-            let proxies = proxy_checker
+            let working_proxies = proxy_checker
                 .check_proxies(proxies.socks5, url, args.timeout)
                 .await
                 .expect("Failed to check SOCKS5 proxies");
 
             socks5_progress_bar.finish_with_message("Finished checking SOCKS5 proxies");
-            proxies
+            let elapsed_time = time::Duration::from_secs(socks5_progress_bar.elapsed().as_secs());
+
+            CheckTaskResult::new(
+                ProxyType::Socks5,
+                working_proxies,
+                proxy_count,
+                elapsed_time,
+            )
         });
 
         check_tasks.push(socks5_task);
     }
 
-    let working_proxies: Proxies = future::try_join_all(check_tasks)
+    let check_task_results: Vec<CheckTaskResult> = future::try_join_all(check_tasks)
         .await
         .unwrap()
         .into_iter()
-        .flatten()
         .collect();
 
     let proxies_folder = Path::new("Proxies");
@@ -161,25 +212,61 @@ async fn main() {
         fs::create_dir(proxies_folder).expect("Failed to create proxies folder");
     }
 
+    let mut table_builder = Builder::default();
+
+    table_builder.set_header([
+        "Proxy Type",
+        "Working Proxies",
+        "Proxies Checked",
+        "Elapsed Time",
+    ]);
+
     if !args.socks5 {
+        let result = check_task_results
+            .iter()
+            .find(|result| result.proxy_type == ProxyType::Http)
+            .unwrap();
+
+        table_builder.push_record([
+            "HTTP",
+            &result.working_proxies.len().to_string(),
+            &result.proxies_checked.to_string(),
+            &humantime::format_duration(result.elapsed_time).to_string(),
+        ]);
+
         let file = File::create(proxies_folder.join("http.txt"))
             .expect("Failed to create HTTP proxies file");
 
         let mut writer = BufWriter::new(file);
 
-        for proxy in working_proxies.http {
+        for proxy in &result.working_proxies {
             writeln!(writer, "{}", proxy).expect("Failed to write HTTP proxy to file");
         }
     }
 
     if !args.http {
+        let result = check_task_results
+            .iter()
+            .find(|result| result.proxy_type == ProxyType::Socks5)
+            .unwrap();
+
+        table_builder.push_record([
+            "SOCKS5",
+            &result.working_proxies.len().to_string(),
+            &result.proxies_checked.to_string(),
+            &humantime::format_duration(result.elapsed_time).to_string(),
+        ]);
+
         let file = File::create(proxies_folder.join("socks5.txt"))
             .expect("Failed to create SOCKS5 proxies file");
 
         let mut writer = BufWriter::new(file);
 
-        for proxy in working_proxies.socks5 {
+        for proxy in &result.working_proxies {
             writeln!(writer, "{}", proxy).expect("Failed to write SOCKS5 proxy to file");
         }
     }
+
+    let mut table = table_builder.build();
+    println!("{}", table.with(Style::modern()).with(Alignment::center()));
 }

@@ -8,7 +8,14 @@ description = "A command-line tool written in Rust for scraping and checking HTT
 readme = "README.md"
 homepage = "https://github.com/Xewdy444/Proxy-Scraper-Checker"
 repository = "https://github.com/Xewdy444/Proxy-Scraper-Checker"
-keywords = ["proxies", "scraping", "checking", "networking", "security", "automation"]
+keywords = [
+    "proxies",
+    "scraping",
+    "checking",
+    "networking",
+    "security",
+    "automation",
+]
 categories = ["command-line-utilities"]
 
 [profile.release]
@@ -19,8 +26,10 @@ lto = "fat"
 [dependencies]
 clap = { version = "4.4.6", features = ["derive"] }
 futures = "0.3.28"
+humantime = "2.1.0"
 indicatif = "0.17.7"
 reqwest = { version = "0.11.21", features = ["socks"] }
 scraper = "0.17.1"
 serde_json = "1.0.107"
+tabled = "0.14.0"
 tokio = { version = "1.32.0", features = ["full"] }

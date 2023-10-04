@@ -10,6 +10,13 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Semaphore;
 
+/// Represents the type of proxy.
+#[derive(Debug, PartialEq)]
+pub enum ProxyType {
+    Http,
+    Socks5,
+}
+
 /// Represents a proxy, which can be either an HTTP or SOCKS5 proxy.
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub enum Proxy {
