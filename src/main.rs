@@ -23,7 +23,7 @@ struct CheckTaskResult {
 }
 
 impl CheckTaskResult {
-    /// Creates a new `CheckTaskResult` instance.
+    /// Creates a new [`CheckTaskResult`] instance.
     ///
     /// # Arguments
     ///
@@ -34,7 +34,7 @@ impl CheckTaskResult {
     ///
     /// # Returns
     ///
-    /// A new `CheckTaskResult` instance.
+    /// The new [`CheckTaskResult`] instance.
     fn new(
         proxy_type: ProxyType,
         working_proxies: Vec<Proxy>,
@@ -61,11 +61,11 @@ struct Args {
 
     /// The number of tasks to run concurrently for checking proxies
     #[arg(long, default_value_t = 512)]
-    tasks: usize,
+    tasks: u64,
 
     /// The proxy request timeout in seconds
     #[arg(long, default_value_t = 30)]
-    timeout: usize,
+    timeout: u64,
 
     /// The folder to save the working proxies to
     #[arg(short, long, default_value_t = String::from("proxies"))]
@@ -129,7 +129,7 @@ async fn main() {
     scrape_progress_bar.finish_with_message("Finished scraping proxies archive");
 
     let multiprogress_bar = MultiProgress::new();
-    let semaphore = Arc::new(Semaphore::new(args.tasks));
+    let semaphore = Arc::new(Semaphore::new(args.tasks as usize));
     let mut check_tasks = Vec::new();
 
     if !args.socks5 {

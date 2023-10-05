@@ -46,8 +46,8 @@ impl Proxy {
 ///
 /// ## Fields
 ///
-/// * `http` - A `HashSet` of unique HTTP proxies.
-/// * `socks5` - A `HashSet` of unique SOCKS5 proxies.
+/// * `http` - A [`HashSet`] of unique HTTP proxies.
+/// * `socks5` - A [`HashSet`] of unique SOCKS5 proxies.
 #[derive(Debug)]
 pub struct Proxies {
     pub http: HashSet<Proxy>,
@@ -55,11 +55,11 @@ pub struct Proxies {
 }
 
 impl Proxies {
-    /// Creates a new `Proxies` instance.
+    /// Creates a new [`Proxies`] instance.
     ///
     /// ## Returns
     ///
-    /// A `Proxies` instance.
+    /// The new [`Proxies`] instance.
     pub fn new() -> Self {
         Self {
             http: HashSet::new(),
@@ -100,22 +100,22 @@ impl FromIterator<Proxy> for Proxies {
 ///
 /// ## Fields
 ///
-/// * `client` - The `reqwest::Client` to use for making requests.
+/// * `client` - The [`reqwest::Client`] to use for making requests.
 #[derive(Clone, Debug)]
 pub struct ProxyScraper {
     client: reqwest::Client,
 }
 
 impl ProxyScraper {
-    /// Creates a new `ProxyScraper` instance.
+    /// Creates a new [`ProxyScraper`] instance.
     ///
     /// ## Parameters
     ///
-    /// * `client` - The `reqwest::Client` to use for making requests.
+    /// * `client` - The [`reqwest::Client`] to use for making requests.
     ///
     /// ## Returns
     ///
-    /// A `ProxyScraper` instance.
+    /// The new [`ProxyScraper`] instance.
     pub fn new(client: reqwest::Client) -> Self {
         Self { client }
     }
@@ -125,7 +125,7 @@ impl ProxyScraper {
     ///
     /// ## Returns
     ///
-    /// A `Vec` of the API URLs.
+    /// A [`Vec`] of the API URLs.
     ///
     /// ## Errors
     ///
@@ -169,7 +169,7 @@ impl ProxyScraper {
     ///
     /// ## Returns
     ///
-    /// A `Vec` of the scraped proxies.
+    /// A [`Vec`] of the scraped proxies.
     ///
     /// ## Errors
     ///
@@ -228,11 +228,11 @@ impl ProxyScraper {
 }
 
 impl Default for ProxyScraper {
-    /// Creates a new `ProxyScraper` instance with a 30 second timeout.
+    /// Creates a new [`ProxyScraper`] instance with a 30 second timeout.
     ///
     /// ## Returns
     ///
-    /// A `ProxyScraper` instance.
+    /// The new [`ProxyScraper`] instance.
     fn default() -> Self {
         Self::new(
             reqwest::Client::builder()
@@ -256,7 +256,7 @@ pub struct ProxyChecker {
 }
 
 impl ProxyChecker {
-    /// Creates a new `ProxyChecker` instance.
+    /// Creates a new [`ProxyChecker`] instance.
     ///
     /// ## Parameters
     ///
@@ -265,7 +265,7 @@ impl ProxyChecker {
     ///
     /// ## Returns
     ///
-    /// A `ProxyChecker` instance.
+    /// The new [`ProxyChecker`] instance.
     pub fn new(semaphore: Arc<Semaphore>, progress_bar: ProgressBar) -> Self {
         Self {
             semaphore,
@@ -283,20 +283,20 @@ impl ProxyChecker {
     ///
     /// ## Returns
     ///
-    /// A `Result` containing the proxy if the check succeeds, or an `Err` if an error occurs.
+    /// A [`Result`] containing the proxy if the check succeeds, or an [`Err`] if an error occurs.
     ///
     /// ## Errors
     ///
-    /// An error is returned if the `reqwest::Client` cannot be built, if the request fails,
+    /// An error is returned if the [`reqwest::Client`] cannot be built, if the request fails,
     /// or if the HTTP response is an error status code.
     async fn check_proxy(
         proxy: Proxy,
         url: String,
-        timeout: usize,
+        timeout: u64,
     ) -> Result<Proxy, Box<dyn Error + Send + Sync>> {
         let client = reqwest::Client::builder()
             .proxy(reqwest::Proxy::all(proxy.url())?)
-            .timeout(Duration::from_secs(timeout as u64))
+            .timeout(Duration::from_secs(timeout))
             .build()?;
 
         client.get(url).send().await?.error_for_status()?;
@@ -313,8 +313,8 @@ impl ProxyChecker {
     ///
     /// ## Returns
     ///
-    /// A `Result` containing a `Vec` of the working proxies if the checks succeed,
-    /// or an `Err` if an error occurs.
+    /// A [`Result`] containing a [`Vec`] of the working proxies if the checks succeed,
+    /// or an [`Err`] if an error occurs.
     ///
     /// ## Errors
     ///
@@ -323,7 +323,7 @@ impl ProxyChecker {
         &self,
         proxies: HashSet<Proxy>,
         url: String,
-        timeout: usize,
+        timeout: u64,
     ) -> Result<Vec<Proxy>, Box<dyn Error>> {
         let mut tasks = Vec::new();
 
