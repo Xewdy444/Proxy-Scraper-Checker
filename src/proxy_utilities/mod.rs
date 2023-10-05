@@ -18,7 +18,7 @@ pub enum ProxyType {
 }
 
 /// Represents a proxy, which can be either an HTTP or SOCKS5 proxy.
-#[derive(Clone, Debug, Hash, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Proxy {
     Http(String),
     Socks5(String),
@@ -165,7 +165,7 @@ impl ProxyScraper {
     /// ## Parameters
     ///
     /// * `archive_url` - The archive API URL to scrape the proxies from.
-    /// * `anonymous` - Whether to only scrape anonymous proxies.
+    /// * `anonymous_only` - Whether to only scrape anonymous proxies.
     ///
     /// ## Returns
     ///
@@ -178,7 +178,7 @@ impl ProxyScraper {
     pub async fn scrape_proxies(
         &self,
         archive_url: String,
-        anonymous: bool,
+        anonymous_only: bool,
     ) -> Result<Vec<Proxy>, Box<dyn Error + Send + Sync>> {
         let response = self.client.get(archive_url).send().await?;
         let json: Value = serde_json::from_str(&response.text().await?)?;
@@ -188,7 +188,7 @@ impl ProxyScraper {
             .as_array()
             .ok_or("Invalid JSON received from archive API URL")?
         {
-            if anonymous {
+            if anonymous_only {
                 let kind = match proxy_dict.get("kind") {
                     Some(value) => match value.as_u64() {
                         Some(value) => value,
@@ -228,7 +228,7 @@ impl ProxyScraper {
 }
 
 impl Default for ProxyScraper {
-    /// Creates a new `ProxyScraper` instance with the default `reqwest::Client`.
+    /// Creates a new `ProxyScraper` instance with a 30 second timeout.
     ///
     /// ## Returns
     ///
@@ -292,7 +292,7 @@ impl ProxyChecker {
     async fn check_proxy(
         proxy: Proxy,
         url: String,
-        timeout: u16,
+        timeout: usize,
     ) -> Result<Proxy, Box<dyn Error + Send + Sync>> {
         let client = reqwest::Client::builder()
             .proxy(reqwest::Proxy::all(proxy.url())?)
@@ -323,7 +323,7 @@ impl ProxyChecker {
         &self,
         proxies: HashSet<Proxy>,
         url: String,
-        timeout: u16,
+        timeout: usize,
     ) -> Result<Vec<Proxy>, Box<dyn Error>> {
         let mut tasks = Vec::new();
 

@@ -13,33 +13,33 @@ use tabled::builder::Builder;
 use tabled::settings::{Alignment, Style};
 use tokio::sync::Semaphore;
 
-/// A struct representing the result of a check task
+/// Represents the result of a check task.
 #[derive(Debug)]
 struct CheckTaskResult {
     proxy_type: ProxyType,
     working_proxies: Vec<Proxy>,
-    proxies_checked: u64,
+    proxies_checked: usize,
     elapsed_time: time::Duration,
 }
 
 impl CheckTaskResult {
-    /// Creates a new `CheckTaskResult` instance
+    /// Creates a new `CheckTaskResult` instance.
     ///
     /// # Arguments
     ///
-    /// * `proxy_type` - The type of proxies that were checked
-    /// * `working_proxies` - The working proxies
-    /// * `proxies_checked` - The number of proxies that were checked
-    /// * `elapsed_time` - The elapsed time
+    /// * `proxy_type` - The type of proxies that were checked.
+    /// * `working_proxies` - The working proxies.
+    /// * `proxies_checked` - The number of proxies that were checked.
+    /// * `elapsed_time` - The elapsed time.
     ///
     /// # Returns
     ///
-    /// A new `CheckTaskResult` instance
+    /// A new `CheckTaskResult` instance.
     fn new(
         proxy_type: ProxyType,
         working_proxies: Vec<Proxy>,
-        proxies_checked: u64,
-        elapsed_time: std::time::Duration,
+        proxies_checked: usize,
+        elapsed_time: time::Duration,
     ) -> Self {
         Self {
             proxy_type,
@@ -61,11 +61,15 @@ struct Args {
 
     /// The number of tasks to run concurrently for checking proxies
     #[arg(long, default_value_t = 512)]
-    tasks: u16,
+    tasks: usize,
 
     /// The proxy request timeout in seconds
     #[arg(long, default_value_t = 30)]
-    timeout: u16,
+    timeout: usize,
+
+    /// The folder to save the working proxies to
+    #[arg(short, long, default_value_t = String::from("proxies"))]
+    folder: String,
 
     /// Only check anonymous proxies
     #[arg(short, long, default_value_t = false)]
@@ -125,14 +129,14 @@ async fn main() {
     scrape_progress_bar.finish_with_message("Finished scraping proxies archive");
 
     let multiprogress_bar = MultiProgress::new();
-    let semaphore = Arc::new(Semaphore::new(args.tasks as usize));
+    let semaphore = Arc::new(Semaphore::new(args.tasks));
     let mut check_tasks = Vec::new();
 
     if !args.socks5 {
-        let proxy_count = proxies.http.len() as u64;
+        let proxy_count = proxies.http.len();
 
         let http_progress_bar = multiprogress_bar.add(
-            ProgressBar::new(proxy_count).with_style(
+            ProgressBar::new(proxy_count as u64).with_style(
                 ProgressStyle::default_bar()
                     .template(
                         "[{msg}] {spinner:.green} {percent}% [{wide_bar:.green}] {pos}/{len} [{elapsed_precise}<{eta_precise}, {per_sec}]",
@@ -162,10 +166,10 @@ async fn main() {
     }
 
     if !args.http {
-        let proxy_count = proxies.socks5.len() as u64;
+        let proxy_count = proxies.socks5.len();
 
         let socks5_progress_bar = multiprogress_bar.add(
-            ProgressBar::new(proxy_count).with_style(
+            ProgressBar::new(proxy_count as u64).with_style(
                 ProgressStyle::default_bar()
                     .template(
                         "[{msg}] {spinner:.blue} {percent}% [{wide_bar:.blue}] {pos}/{len} [{elapsed_precise}<{eta_precise}, {per_sec}]",
@@ -206,10 +210,10 @@ async fn main() {
         .into_iter()
         .collect();
 
-    let proxies_folder = Path::new("Proxies");
+    let proxies_folder = Path::new(&args.folder);
 
     if !proxies_folder.exists() {
-        fs::create_dir(proxies_folder).expect("Failed to create proxies folder");
+        fs::create_dir_all(proxies_folder).expect("Failed to create proxies folder");
     }
 
     let mut table_builder = Builder::default();
