@@ -8,7 +8,7 @@ use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 use std::path::Path;
 use std::sync::Arc;
-use std::time;
+use std::time::Duration;
 use tabled::builder::Builder;
 use tabled::settings::{Alignment, Style};
 use tokio::sync::Semaphore;
@@ -18,8 +18,8 @@ use tokio::sync::Semaphore;
 struct CheckTaskResult {
     proxy_type: ProxyType,
     working_proxies: Vec<Proxy>,
-    proxies_checked: usize,
-    elapsed_time: time::Duration,
+    proxies_checked: u64,
+    elapsed_time: Duration,
 }
 
 impl CheckTaskResult {
@@ -38,8 +38,8 @@ impl CheckTaskResult {
     fn new(
         proxy_type: ProxyType,
         working_proxies: Vec<Proxy>,
-        proxies_checked: usize,
-        elapsed_time: time::Duration,
+        proxies_checked: u64,
+        elapsed_time: Duration,
     ) -> Self {
         Self {
             proxy_type,
@@ -158,8 +158,14 @@ async fn main() {
                 .expect("Failed to check HTTP proxies");
 
             http_progress_bar.finish_with_message("Finished checking HTTP proxies");
-            let elapsed_time = time::Duration::from_secs(http_progress_bar.elapsed().as_secs());
-            CheckTaskResult::new(ProxyType::Http, working_proxies, proxy_count, elapsed_time)
+            let elapsed_time = Duration::from_secs(http_progress_bar.elapsed().as_secs());
+
+            CheckTaskResult::new(
+                ProxyType::Http,
+                working_proxies,
+                proxy_count as u64,
+                elapsed_time,
+            )
         });
 
         check_tasks.push(http_task);
@@ -191,12 +197,12 @@ async fn main() {
                 .expect("Failed to check SOCKS5 proxies");
 
             socks5_progress_bar.finish_with_message("Finished checking SOCKS5 proxies");
-            let elapsed_time = time::Duration::from_secs(socks5_progress_bar.elapsed().as_secs());
+            let elapsed_time = Duration::from_secs(socks5_progress_bar.elapsed().as_secs());
 
             CheckTaskResult::new(
                 ProxyType::Socks5,
                 working_proxies,
-                proxy_count,
+                proxy_count as u64,
                 elapsed_time,
             )
         });
