@@ -3,8 +3,15 @@ A command-line tool written in Rust for scraping and checking HTTP and SOCKS5 pr
 
 ![image](https://user-images.githubusercontent.com/95155966/231937289-ddf0187f-e8c9-4878-b92d-96617695e6f0.png)
 
-## Build
-    $ cargo build --release
+## Installation
+
+### Local
+
+    $ cargo install --path .
+
+### crates.io
+
+    $ cargo install proxy-scraper-checker
 
 ## Usage
 > **Note**
