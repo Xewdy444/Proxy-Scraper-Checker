@@ -252,6 +252,8 @@ async fn main() {
         for proxy in &result.working_proxies {
             writeln!(writer, "{}", proxy).expect("Failed to write HTTP proxy to file");
         }
+
+        writer.flush().expect("Failed to flush HTTP proxies file");
     }
 
     if !args.http {
@@ -275,6 +277,8 @@ async fn main() {
         for proxy in &result.working_proxies {
             writeln!(writer, "{}", proxy).expect("Failed to write SOCKS5 proxy to file");
         }
+
+        writer.flush().expect("Failed to flush SOCKS5 proxies file");
     }
 
     let mut table = table_builder.build();
