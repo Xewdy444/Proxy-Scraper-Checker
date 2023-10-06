@@ -1,5 +1,5 @@
 [package]
-name = "proxy_scraper_checker"
+name = "proxy-scraper-checker"
 version = "0.0.1"
 edition = "2021"
 authors = ["Xewdy444 <xewdy@xewdy.tech>"]
