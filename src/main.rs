@@ -4,8 +4,10 @@ use clap::{command, Parser};
 use futures::future;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use proxy_utilities::{Proxies, Proxy, ProxyChecker, ProxyScraper, ProxyType};
+#[cfg(not(windows))]
+use rlimit::Resource;
 use std::fs::{self, File};
-use std::io::{BufWriter, Write};
+use std::io::{self, BufWriter, Write};
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
@@ -50,6 +52,55 @@ impl CheckTaskResult {
     }
 }
 
+/// Increases the open file limit if necessary on Windows.
+///
+/// # Arguments
+///
+/// * `limit` - The limit to set.
+///
+/// # Returns
+///
+/// A [`Result`] containing the result of the operation.
+#[cfg(windows)]
+fn set_open_file_limit(limit: u64) -> Result<(), io::Error> {
+    let open_files_limit = rlimit::getmaxstdio() as u64;
+
+    if limit <= open_files_limit {
+        return Ok(());
+    }
+
+    if limit > 8192 {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "The open file limit cannot be greater than 8192 on Windows",
+        ));
+    }
+
+    rlimit::setmaxstdio(limit as u32)?;
+    Ok(())
+}
+
+/// Increases the open file limit if necessary on non-Windows platforms.
+///
+/// # Arguments
+///
+/// * `limit` - The limit to set.
+///
+/// # Returns
+///
+/// A [`Result`] containing the result of the operation.
+#[cfg(not(windows))]
+fn set_open_file_limit(limit: u64) -> Result<(), io::Error> {
+    let open_files_limit = rlimit::getrlimit(Resource::NOFILE)?;
+
+    if limit <= open_files_limit.0 {
+        return Ok(());
+    }
+
+    rlimit::setrlimit(Resource::NOFILE, limit, open_files_limit.1)?;
+    Ok(())
+}
+
 #[derive(Debug, Parser)]
 #[command(
     about = "A command-line tool for scraping and checking HTTP and SOCKS5 proxies from the checkerproxy.net proxies archive"
@@ -88,6 +139,10 @@ struct Args {
 async fn main() {
     let args = Args::parse();
     let proxy_scraper = ProxyScraper::default();
+
+    set_open_file_limit(args.tasks).expect(
+        "Failed to set open file limit; decreasing the number of tasks should fix this issue",
+    );
 
     let archive_urls = proxy_scraper
         .scrape_archive_urls()
