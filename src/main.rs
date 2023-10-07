@@ -52,7 +52,7 @@ impl CheckTaskResult {
 
 #[derive(Debug, Parser)]
 #[command(
-    about = "A command-line tool written in Rust for scraping and checking HTTP and SOCKS5 proxies from the checkerproxy.net proxies archive"
+    about = "A command-line tool for scraping and checking HTTP and SOCKS5 proxies from the checkerproxy.net proxies archive"
 )]
 struct Args {
     /// The URL to check the proxies against
@@ -71,15 +71,15 @@ struct Args {
     #[arg(short, long, default_value_t = String::from("proxies"))]
     folder: String,
 
-    /// Only check anonymous proxies
+    /// Only save anonymous proxies
     #[arg(short, long, default_value_t = false)]
     anonymous: bool,
 
-    /// Only check HTTP proxies
+    /// Only save HTTP proxies
     #[arg(long, default_value_t = false, conflicts_with = "socks5")]
     http: bool,
 
-    /// Only check SOCKS5 proxies
+    /// Only save SOCKS5 proxies
     #[arg(long, default_value_t = false, conflicts_with = "http")]
     socks5: bool,
 }

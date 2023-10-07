@@ -4,11 +4,11 @@ version = "0.1.0"
 edition = "2021"
 authors = ["Xewdy444 <xewdy@xewdy.tech>"]
 license = "MIT"
-description = "A command-line tool written in Rust for scraping and checking HTTP and SOCKS5 proxies from the checkerproxy.net proxies archive"
+description = "A command-line tool for scraping and checking HTTP and SOCKS5 proxies from the checkerproxy.net proxies archive"
 readme = "README.md"
 homepage = "https://github.com/Xewdy444/Proxy-Scraper-Checker"
 repository = "https://github.com/Xewdy444/Proxy-Scraper-Checker"
-keywords = ["proxy", "scraper", "checker"]
+keywords = ["proxy", "scraper", "checker", "http", "socks5"]
 categories = ["command-line-utilities"]
 
 [profile.release]
