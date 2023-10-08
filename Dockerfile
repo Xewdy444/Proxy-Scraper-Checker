@@ -5,7 +5,7 @@ WORKDIR /app
 COPY . .
 
 RUN apt-get update -y \
-    && apt-get install -y \
+    && apt-get install -y --no-install-recommends \
     pkg-config \
     libssl-dev \
     && cargo build --release
@@ -13,7 +13,7 @@ RUN apt-get update -y \
 FROM debian:stable-slim
 
 RUN apt-get update -y \
-    && apt-get install -y \
+    && apt-get install -y --no-install-recommends \
     libssl-dev \
     ca-certificates \
     && apt-get clean \
