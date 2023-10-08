@@ -120,7 +120,7 @@ impl ProxyScraper {
         Self { client }
     }
 
-    /// Scrapes the archive URLs from the https://checkerproxy.net/getAllProxy page
+    /// Scrapes the archive URLs from the <https://checkerproxy.net/getAllProxy> page
     /// and converts them into the API URLs.
     ///
     /// ## Returns
@@ -129,7 +129,7 @@ impl ProxyScraper {
     ///
     /// ## Errors
     ///
-    /// Returns an error if the request to the https://checkerproxy.net/getAllProxy page fails
+    /// Returns an error if the request to the <https://checkerproxy.net/getAllProxy> page fails
     /// or if the HTML could not be parsed.
     pub async fn scrape_archive_urls(&self) -> Result<Vec<String>, Box<dyn Error>> {
         let response = self

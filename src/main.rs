@@ -21,7 +21,7 @@ struct CheckTaskResult {
     proxy_type: ProxyType,
     working_proxies: Vec<Proxy>,
     proxies_checked: u64,
-    elapsed_time: Duration,
+    check_duration: Duration,
 }
 
 impl CheckTaskResult {
@@ -32,7 +32,7 @@ impl CheckTaskResult {
     /// * `proxy_type` - The type of proxies that were checked.
     /// * `working_proxies` - The working proxies.
     /// * `proxies_checked` - The number of proxies that were checked.
-    /// * `elapsed_time` - The elapsed time.
+    /// * `check_duration` - The duration of the check task.
     ///
     /// # Returns
     ///
@@ -41,13 +41,13 @@ impl CheckTaskResult {
         proxy_type: ProxyType,
         working_proxies: Vec<Proxy>,
         proxies_checked: u64,
-        elapsed_time: Duration,
+        check_duration: Duration,
     ) -> Self {
         Self {
             proxy_type,
             working_proxies,
             proxies_checked,
-            elapsed_time,
+            check_duration,
         }
     }
 }
@@ -63,9 +63,9 @@ impl CheckTaskResult {
 /// A [`Result`] containing the result of the operation.
 #[cfg(windows)]
 fn set_open_file_limit(limit: u64) -> Result<(), io::Error> {
-    let open_files_limit = rlimit::getmaxstdio() as u64;
+    let open_file_limit = rlimit::getmaxstdio() as u64;
 
-    if limit <= open_files_limit {
+    if limit <= open_file_limit {
         return Ok(());
     }
 
@@ -91,13 +91,13 @@ fn set_open_file_limit(limit: u64) -> Result<(), io::Error> {
 /// A [`Result`] containing the result of the operation.
 #[cfg(not(windows))]
 fn set_open_file_limit(limit: u64) -> Result<(), io::Error> {
-    let open_files_limit = rlimit::getrlimit(Resource::NOFILE)?;
+    let open_file_limit = rlimit::getrlimit(Resource::NOFILE)?;
 
-    if limit <= open_files_limit.0 {
+    if limit <= open_file_limit.0 {
         return Ok(());
     }
 
-    rlimit::setrlimit(Resource::NOFILE, limit, open_files_limit.1)?;
+    rlimit::setrlimit(Resource::NOFILE, limit, open_file_limit.1)?;
     Ok(())
 }
 
@@ -213,13 +213,13 @@ async fn main() {
                 .expect("Failed to check HTTP proxies");
 
             http_progress_bar.finish_with_message("Finished checking HTTP proxies");
-            let elapsed_time = Duration::from_secs(http_progress_bar.elapsed().as_secs());
+            let check_duration = Duration::from_secs(http_progress_bar.elapsed().as_secs());
 
             CheckTaskResult::new(
                 ProxyType::Http,
                 working_proxies,
                 proxy_count as u64,
-                elapsed_time,
+                check_duration,
             )
         });
 
@@ -252,13 +252,13 @@ async fn main() {
                 .expect("Failed to check SOCKS5 proxies");
 
             socks5_progress_bar.finish_with_message("Finished checking SOCKS5 proxies");
-            let elapsed_time = Duration::from_secs(socks5_progress_bar.elapsed().as_secs());
+            let check_duration = Duration::from_secs(socks5_progress_bar.elapsed().as_secs());
 
             CheckTaskResult::new(
                 ProxyType::Socks5,
                 working_proxies,
                 proxy_count as u64,
-                elapsed_time,
+                check_duration,
             )
         });
 
@@ -283,7 +283,7 @@ async fn main() {
         "Proxy Type",
         "Working Proxies",
         "Proxies Checked",
-        "Elapsed Time",
+        "Check Duration",
     ]);
 
     if !args.socks5 {
@@ -296,7 +296,7 @@ async fn main() {
             "HTTP",
             &result.working_proxies.len().to_string(),
             &result.proxies_checked.to_string(),
-            &humantime::format_duration(result.elapsed_time).to_string(),
+            &humantime::format_duration(result.check_duration).to_string(),
         ]);
 
         let file = File::create(proxies_folder.join("http.txt"))
@@ -321,7 +321,7 @@ async fn main() {
             "SOCKS5",
             &result.working_proxies.len().to_string(),
             &result.proxies_checked.to_string(),
-            &humantime::format_duration(result.elapsed_time).to_string(),
+            &humantime::format_duration(result.check_duration).to_string(),
         ]);
 
         let file = File::create(proxies_folder.join("socks5.txt"))
