@@ -5,7 +5,7 @@ on:
     types: [published]
 
 jobs:
-  publish:
+  publish-docker-image:
     name: Publish Docker Image
     runs-on: ubuntu-latest
     steps:
@@ -24,7 +24,8 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: ASzc/change-string-case-action@v5
+      - name: Get repository owner
+        uses: ASzc/change-string-case-action@v5
         id: repo-owner
         with:
           string: ${{ github.repository_owner }}
@@ -33,7 +34,7 @@ jobs:
         id: crate-version
         uses: colathro/crate-version@1.0.0
         with:
-          file: "./Cargo.toml"
+          file: ./Cargo.toml
 
       - name: Build and push
         uses: docker/build-push-action@v5

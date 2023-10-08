@@ -1,15 +1,14 @@
-name: Add Release Artifacts to GitHub Releases
+name: Upload Release Artifacts to GitHub Releases
 
 on:
   release:
     types: [published]
 
 jobs:
-  release:
+  upload-release-artifacts:
     name: Release ${{ matrix.target }}
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
       matrix:
         include:
           - target: x86_64-pc-windows-gnu
@@ -21,11 +20,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Compile and release
+      - name: Compile and upload artifacts
         uses: rust-build/rust-build.action@v1.4.3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TOOLCHAIN_VERSION: 1.70.0
+          TOOLCHAIN_VERSION: 1.73.0
         with:
           RUSTTARGET: ${{ matrix.target }}
           ARCHIVE_TYPES: ${{ matrix.archive }}

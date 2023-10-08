@@ -2,11 +2,9 @@ name: Analyze With Clippy
 
 on:
   push:
-    branches: ["main"]
     paths:
       - src/**
   pull_request:
-    branches: ["main"]
     paths:
       - src/**
 
@@ -16,8 +14,8 @@ permissions:
   actions: read
 
 jobs:
-  rust-clippy-analyze:
-    name: Run rust-clippy analyzing
+  analyze-with-clippy:
+    name: Analyze With Clippy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,7 +28,7 @@ jobs:
           components: clippy
           override: true
 
-      - name: Install required cargo
+      - name: Install clippy-sarif and sarif-fmt
         run: cargo install clippy-sarif sarif-fmt
 
       - name: Run rust-clippy
