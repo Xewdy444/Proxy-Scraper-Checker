@@ -4,8 +4,13 @@ A command-line tool for scraping and checking HTTP and SOCKS5 proxies from the [
 ![image](https://github.com/Xewdy444/Proxy-Scraper-Checker/assets/95155966/91b55084-f82c-43d6-be29-6eaee1c8b23f)
 
 ## Docker
-    $ docker build -t proxy-scraper-checker .
-    $ docker run -it -v ./proxies:/proxies --rm proxy-scraper-checker
+
+### Local
+    $ docker build -t proxy-scraper-checker:latest .
+    $ docker run -it -v ./proxies:/proxies --rm proxy-scraper-checker:latest
+
+### GitHub Container Registry
+    $ docker run -it -v ./proxies:/proxies --rm ghcr.io/Xewdy444/proxy-scraper-checker:latest
 
 ## Installation
 
