@@ -1,6 +1,6 @@
 [package]
 name = "proxy-scraper-checker"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Xewdy444 <xewdy@xewdy.tech>"]
 license = "MIT"
