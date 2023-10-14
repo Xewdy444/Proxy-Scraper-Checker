@@ -188,10 +188,10 @@ async fn main() {
     let mut check_tasks = Vec::new();
 
     if !args.socks5 {
-        let proxy_count = proxies.http.len();
+        let proxy_count = proxies.http.len() as u64;
 
         let http_progress_bar = multiprogress_bar.add(
-            ProgressBar::new(proxy_count as u64).with_style(
+            ProgressBar::new(proxy_count).with_style(
                 ProgressStyle::default_bar()
                     .template(
                         "[{msg}] {spinner:.green} {percent}% [{wide_bar:.green}] {pos}/{len} [{elapsed_precise}<{eta_precise}, {per_sec}]",
@@ -218,7 +218,7 @@ async fn main() {
             CheckTaskResult::new(
                 ProxyType::Http,
                 working_proxies,
-                proxy_count as u64,
+                proxy_count,
                 check_duration,
             )
         });
@@ -227,10 +227,10 @@ async fn main() {
     }
 
     if !args.http {
-        let proxy_count = proxies.socks5.len();
+        let proxy_count = proxies.socks5.len() as u64;
 
         let socks5_progress_bar = multiprogress_bar.add(
-            ProgressBar::new(proxy_count as u64).with_style(
+            ProgressBar::new(proxy_count).with_style(
                 ProgressStyle::default_bar()
                     .template(
                         "[{msg}] {spinner:.blue} {percent}% [{wide_bar:.blue}] {pos}/{len} [{elapsed_precise}<{eta_precise}, {per_sec}]",
@@ -257,7 +257,7 @@ async fn main() {
             CheckTaskResult::new(
                 ProxyType::Socks5,
                 working_proxies,
-                proxy_count as u64,
+                proxy_count,
                 check_duration,
             )
         });
