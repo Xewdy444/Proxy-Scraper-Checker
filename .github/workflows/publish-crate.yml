@@ -1,4 +1,4 @@
-name: Publish crate to crates.io
+name: Publish Crate to crates.io
 
 on:
   release:
@@ -6,7 +6,7 @@ on:
 
 jobs:
   publish-crate:
-    name: Publish crate to crates.io
+    name: Publish Crate to crates.io
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
