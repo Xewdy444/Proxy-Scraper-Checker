@@ -2,7 +2,7 @@
 name = "proxy-scraper-checker"
 version = "0.1.1"
 edition = "2021"
-authors = ["Xewdy444 <xewdy@xewdy.tech>"]
+authors = ["Xewdy444 <xewdy@xewdy.systems>"]
 license = "MIT"
 description = "A command-line tool for scraping and checking HTTP and SOCKS5 proxies from the checkerproxy.net proxies archive"
 readme = "README.md"
