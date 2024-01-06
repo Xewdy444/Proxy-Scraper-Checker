@@ -279,7 +279,7 @@ async fn main() {
 
     let mut table_builder = Builder::default();
 
-    table_builder.set_header([
+    table_builder.push_record([
         "Proxy Type",
         "Working Proxies",
         "Proxies Checked",
