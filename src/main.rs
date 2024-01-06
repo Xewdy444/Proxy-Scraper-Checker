@@ -299,16 +299,18 @@ async fn main() {
             &humantime::format_duration(result.check_duration).to_string(),
         ]);
 
-        let file = File::create(proxies_folder.join("http.txt"))
-            .expect("Failed to create HTTP proxies file");
+        if !result.working_proxies.is_empty() {
+            let file = File::create(proxies_folder.join("http.txt"))
+                .expect("Failed to create HTTP proxies file");
 
-        let mut writer = BufWriter::new(file);
+            let mut writer = BufWriter::new(file);
 
-        for proxy in &result.working_proxies {
-            writeln!(writer, "{}", proxy).expect("Failed to write HTTP proxy to file");
+            for proxy in &result.working_proxies {
+                writeln!(writer, "{}", proxy).expect("Failed to write HTTP proxy to file");
+            }
+
+            writer.flush().expect("Failed to flush HTTP proxies file");
         }
-
-        writer.flush().expect("Failed to flush HTTP proxies file");
     }
 
     if !args.http {
@@ -324,16 +326,18 @@ async fn main() {
             &humantime::format_duration(result.check_duration).to_string(),
         ]);
 
-        let file = File::create(proxies_folder.join("socks5.txt"))
-            .expect("Failed to create SOCKS5 proxies file");
+        if !result.working_proxies.is_empty() {
+            let file = File::create(proxies_folder.join("socks5.txt"))
+                .expect("Failed to create SOCKS5 proxies file");
 
-        let mut writer = BufWriter::new(file);
+            let mut writer = BufWriter::new(file);
 
-        for proxy in &result.working_proxies {
-            writeln!(writer, "{}", proxy).expect("Failed to write SOCKS5 proxy to file");
+            for proxy in &result.working_proxies {
+                writeln!(writer, "{}", proxy).expect("Failed to write SOCKS5 proxy to file");
+            }
+
+            writer.flush().expect("Failed to flush SOCKS5 proxies file");
         }
-
-        writer.flush().expect("Failed to flush SOCKS5 proxies file");
     }
 
     let mut table = table_builder.build();
