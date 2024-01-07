@@ -2,10 +2,13 @@ use futures::future;
 use indicatif::ProgressBar;
 use scraper::{Html, Selector};
 use serde_json::Value;
+use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::error::Error;
 use std::fmt;
 use std::hash::Hash;
+use std::net::IpAddr;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Semaphore;
@@ -27,7 +30,35 @@ pub enum Proxy {
 impl fmt::Display for Proxy {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Proxy::Http(address) | Proxy::Socks5(address) => write!(f, "{}", address),
+            Proxy::Http(address) | Proxy::Socks5(address) => write!(f, "{address}"),
+        }
+    }
+}
+
+impl PartialOrd for Proxy {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Proxy {
+    fn cmp(&self, other: &Self) -> Ordering {
+        let (addr, port) = self.parse_host().unwrap_or((IpAddr::from([0, 0, 0, 0]), 0));
+
+        let (other_addr, other_port) = other
+            .parse_host()
+            .unwrap_or((IpAddr::from([0, 0, 0, 0]), 0));
+
+        if addr < other_addr {
+            Ordering::Less
+        } else if addr > other_addr {
+            Ordering::Greater
+        } else if port < other_port {
+            Ordering::Less
+        } else if port > other_port {
+            Ordering::Greater
+        } else {
+            Ordering::Equal
         }
     }
 }
@@ -36,9 +67,28 @@ impl Proxy {
     /// Returns the URL of the proxy.
     fn url(&self) -> String {
         match self {
-            Proxy::Http(_) => format!("http://{}", self),
-            Proxy::Socks5(_) => format!("socks5://{}", self),
+            Proxy::Http(_) => format!("http://{self}"),
+            Proxy::Socks5(_) => format!("socks5://{self}"),
         }
+    }
+
+    /// Parses the proxy into an IP address and port number.
+    ///
+    /// ## Returns
+    ///
+    /// A [`Result`] containing the IP address and port number if the proxy is valid,
+    /// or an [`Err`] if the proxy is invalid.
+    fn parse_host(&self) -> Result<(IpAddr, u16), Box<dyn Error>> {
+        let host = self.to_string();
+        let parts: Vec<&str> = host.split(':').collect();
+
+        if parts.len() != 2 {
+            return Err("Invalid proxy".into());
+        }
+
+        let address = IpAddr::from_str(parts[0])?;
+        let port: u16 = parts[1].parse()?;
+        Ok((address, port))
     }
 }
 
@@ -153,7 +203,7 @@ impl ProxyScraper {
                 continue;
             }
 
-            let url = format!("https://checkerproxy.net/api{}", uri_path);
+            let url = format!("https://checkerproxy.net/api{uri_path}");
             archive_urls.push(url);
         }
 

@@ -101,6 +101,42 @@ fn set_open_file_limit(limit: u64) -> Result<(), io::Error> {
     Ok(())
 }
 
+/// Writes the proxies to a file.
+///
+/// # Arguments
+///
+/// * `proxy_type` - The type of proxies.
+/// * `proxies` - The proxies to write to a file.
+/// * `proxies_folder` - The folder to save the proxies to.
+///
+/// # Returns
+///
+/// A [`Result`] containing the result of the operation.
+fn write_proxies_to_file(
+    proxy_type: ProxyType,
+    proxies: &[Proxy],
+    proxies_folder: &Path,
+) -> Result<(), io::Error> {
+    if !proxies_folder.exists() {
+        fs::create_dir_all(proxies_folder)?;
+    }
+
+    let file_name = match proxy_type {
+        ProxyType::Http => "http.txt",
+        ProxyType::Socks5 => "socks5.txt",
+    };
+
+    let file = File::create(proxies_folder.join(file_name))?;
+    let mut writer = BufWriter::new(file);
+
+    for proxy in proxies {
+        writeln!(writer, "{proxy}")?;
+    }
+
+    writer.flush()?;
+    Ok(())
+}
+
 #[derive(Debug, Parser)]
 #[command(
     about = "A command-line tool for scraping and checking HTTP and SOCKS5 proxies from the checkerproxy.net proxies archive"
@@ -207,13 +243,14 @@ async fn main() {
             let proxy_checker = ProxyChecker::new(http_semaphore, http_progress_bar.clone());
             http_progress_bar.set_message("Checking HTTP proxies");
 
-            let working_proxies = proxy_checker
+            let mut working_proxies = proxy_checker
                 .check_proxies(proxies.http, url, args.timeout)
                 .await
                 .expect("Failed to check HTTP proxies");
 
             http_progress_bar.finish_with_message("Finished checking HTTP proxies");
             let check_duration = Duration::from_secs(http_progress_bar.elapsed().as_secs());
+            working_proxies.sort_unstable();
 
             CheckTaskResult::new(
                 ProxyType::Http,
@@ -246,13 +283,14 @@ async fn main() {
             let proxy_checker = ProxyChecker::new(socks5_semaphore, socks5_progress_bar.clone());
             socks5_progress_bar.set_message("Checking SOCKS5 proxies");
 
-            let working_proxies = proxy_checker
+            let mut working_proxies = proxy_checker
                 .check_proxies(proxies.socks5, url, args.timeout)
                 .await
                 .expect("Failed to check SOCKS5 proxies");
 
             socks5_progress_bar.finish_with_message("Finished checking SOCKS5 proxies");
             let check_duration = Duration::from_secs(socks5_progress_bar.elapsed().as_secs());
+            working_proxies.sort_unstable();
 
             CheckTaskResult::new(
                 ProxyType::Socks5,
@@ -272,11 +310,6 @@ async fn main() {
         .collect();
 
     let proxies_folder = Path::new(&args.folder);
-
-    if !proxies_folder.exists() {
-        fs::create_dir_all(proxies_folder).expect("Failed to create proxies folder");
-    }
-
     let mut table_builder = Builder::default();
 
     table_builder.push_record([
@@ -300,16 +333,8 @@ async fn main() {
         ]);
 
         if !result.working_proxies.is_empty() {
-            let file = File::create(proxies_folder.join("http.txt"))
-                .expect("Failed to create HTTP proxies file");
-
-            let mut writer = BufWriter::new(file);
-
-            for proxy in &result.working_proxies {
-                writeln!(writer, "{}", proxy).expect("Failed to write HTTP proxy to file");
-            }
-
-            writer.flush().expect("Failed to flush HTTP proxies file");
+            write_proxies_to_file(ProxyType::Http, &result.working_proxies, proxies_folder)
+                .unwrap();
         }
     }
 
@@ -327,16 +352,8 @@ async fn main() {
         ]);
 
         if !result.working_proxies.is_empty() {
-            let file = File::create(proxies_folder.join("socks5.txt"))
-                .expect("Failed to create SOCKS5 proxies file");
-
-            let mut writer = BufWriter::new(file);
-
-            for proxy in &result.working_proxies {
-                writeln!(writer, "{}", proxy).expect("Failed to write SOCKS5 proxy to file");
-            }
-
-            writer.flush().expect("Failed to flush SOCKS5 proxies file");
+            write_proxies_to_file(ProxyType::Socks5, &result.working_proxies, proxies_folder)
+                .unwrap();
         }
     }
 
