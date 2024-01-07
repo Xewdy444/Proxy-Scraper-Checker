@@ -30,7 +30,7 @@ pub enum Proxy {
 impl fmt::Display for Proxy {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Proxy::Http(address) | Proxy::Socks5(address) => write!(f, "{address}"),
+            Proxy::Http(host) | Proxy::Socks5(host) => write!(f, "{host}"),
         }
     }
 }
@@ -69,8 +69,8 @@ impl Proxy {
     /// Returns the URL of the proxy.
     fn url(&self) -> String {
         match self {
-            Proxy::Http(_) => format!("http://{self}"),
-            Proxy::Socks5(_) => format!("socks5://{self}"),
+            Proxy::Http(host) => format!("http://{host}"),
+            Proxy::Socks5(host) => format!("socks5://{host}"),
         }
     }
 
@@ -87,9 +87,9 @@ impl Proxy {
             bail!("Invalid proxy: {host}");
         }
 
-        let address = IpAddr::from_str(parts[0])?;
-        let port: u16 = parts[1].parse()?;
-        Ok((address, port))
+        let addr = IpAddr::from_str(parts[0]).context("Invalid IP address")?;
+        let port: u16 = parts[1].parse().context("Invalid port")?;
+        Ok((addr, port))
     }
 }
 
@@ -172,8 +172,7 @@ impl ProxyScraper {
     ///
     /// ## Errors
     ///
-    /// Returns an error if the request to the <https://checkerproxy.net/getAllProxy> page fails
-    /// or if the HTML could not be parsed.
+    /// Returns an error if the request to the <https://checkerproxy.net/getAllProxy> page fails.
     pub async fn scrape_archive_urls(&self) -> Result<Vec<String>> {
         let response = self
             .client
@@ -184,11 +183,7 @@ impl ProxyScraper {
 
         let html = response.text().await?;
         let parser = Html::parse_document(&html);
-
-        let selector = match Selector::parse("li > a") {
-            Ok(selector) => selector,
-            Err(_) => bail!("Failed to parse HTML"),
-        };
+        let selector = Selector::parse("li > a").unwrap();
 
         let mut archive_urls = Vec::new();
 
@@ -231,20 +226,17 @@ impl ProxyScraper {
     ) -> Result<Vec<Proxy>> {
         let response = self
             .client
-            .get(&archive_url)
+            .get(archive_url)
             .send()
             .await
-            .with_context(|| {
-                format!("Failed to get proxies from archive API URL: {archive_url}")
-            })?;
+            .context("Request failed")?
+            .error_for_status()
+            .context("Request returned an error status code")?;
 
         let json: Value = serde_json::from_str(&response.text().await?)?;
         let mut proxies = Vec::new();
 
-        for proxy_dict in json
-            .as_array()
-            .context("Invalid JSON received from archive API URL")?
-        {
+        for proxy_dict in json.as_array().context("Invalid JSON received")? {
             if anonymous_only {
                 let kind = match proxy_dict.get("kind") {
                     Some(value) => match value.as_u64() {
@@ -259,7 +251,7 @@ impl ProxyScraper {
                 }
             }
 
-            let address = match proxy_dict.get("addr") {
+            let host = match proxy_dict.get("addr") {
                 Some(value) => match value.as_str() {
                     Some(str_value) => str_value.to_string(),
                     None => continue,
@@ -269,9 +261,9 @@ impl ProxyScraper {
 
             let proxy = match proxy_dict.get("type") {
                 Some(value) => match value.as_u64() {
-                    Some(1) => Proxy::Http(address),
-                    Some(2) => Proxy::Http(address),
-                    Some(4) => Proxy::Socks5(address),
+                    Some(1) => Proxy::Http(host),
+                    Some(2) => Proxy::Http(host),
+                    Some(4) => Proxy::Socks5(host),
                     _ => continue,
                 },
                 None => continue,

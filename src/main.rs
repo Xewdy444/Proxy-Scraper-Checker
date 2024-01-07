@@ -1,6 +1,8 @@
 mod proxy_utilities;
 
-use anyhow::{bail, Context, Result};
+#[cfg(windows)]
+use anyhow::bail;
+use anyhow::{Context, Result};
 use clap::{command, Parser};
 use futures::future;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
