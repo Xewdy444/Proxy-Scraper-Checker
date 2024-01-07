@@ -43,11 +43,13 @@ impl PartialOrd for Proxy {
 
 impl Ord for Proxy {
     fn cmp(&self, other: &Self) -> Ordering {
-        let (addr, port) = self.parse_host().unwrap_or((IpAddr::from([0, 0, 0, 0]), 0));
+        let (addr, port) = self
+            .parse_host()
+            .unwrap_or_else(|_| (IpAddr::from([0, 0, 0, 0]), 0));
 
         let (other_addr, other_port) = other
             .parse_host()
-            .unwrap_or((IpAddr::from([0, 0, 0, 0]), 0));
+            .unwrap_or_else(|_| (IpAddr::from([0, 0, 0, 0]), 0));
 
         if addr < other_addr {
             Ordering::Less
