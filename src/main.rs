@@ -1,5 +1,6 @@
 mod proxy_utilities;
 
+use anyhow::{bail, Context, Result};
 use clap::{command, Parser};
 use futures::future;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
@@ -7,7 +8,7 @@ use proxy_utilities::{Proxies, Proxy, ProxyChecker, ProxyScraper, ProxyType};
 #[cfg(not(windows))]
 use rlimit::Resource;
 use std::fs::{self, File};
-use std::io::{self, BufWriter, Write};
+use std::io::{BufWriter, Write};
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
@@ -25,18 +26,14 @@ struct CheckTaskResult {
 }
 
 impl CheckTaskResult {
-    /// Creates a new [`CheckTaskResult`] instance.
+    /// Returns a new [`CheckTaskResult`] instance.
     ///
-    /// # Arguments
+    /// # Parameters
     ///
     /// * `proxy_type` - The type of proxies that were checked.
     /// * `working_proxies` - The working proxies.
     /// * `proxies_checked` - The number of proxies that were checked.
     /// * `check_duration` - The duration of the check task.
-    ///
-    /// # Returns
-    ///
-    /// The new [`CheckTaskResult`] instance.
     fn new(
         proxy_type: ProxyType,
         working_proxies: Vec<Proxy>,
@@ -54,15 +51,20 @@ impl CheckTaskResult {
 
 /// Increases the open file limit if necessary on Windows.
 ///
-/// # Arguments
+/// # Parameters
 ///
 /// * `limit` - The limit to set.
 ///
 /// # Returns
 ///
 /// A [`Result`] containing the result of the operation.
+///
+/// # Errors
+///
+/// Returns an error if the open file limit is greater than 8192
+/// or if the limit could not be set.
 #[cfg(windows)]
-fn set_open_file_limit(limit: u64) -> Result<(), io::Error> {
+fn set_open_file_limit(limit: u64) -> Result<()> {
     let open_file_limit = rlimit::getmaxstdio() as u64;
 
     if limit <= open_file_limit {
@@ -70,40 +72,44 @@ fn set_open_file_limit(limit: u64) -> Result<(), io::Error> {
     }
 
     if limit > 8192 {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "The open file limit cannot be greater than 8192 on Windows",
-        ));
+        bail!("The open file limit cannot be greater than 8192 on Windows");
     }
 
-    rlimit::setmaxstdio(limit as u32)?;
+    rlimit::setmaxstdio(limit as u32).context("Failed to set open file limit")?;
     Ok(())
 }
 
 /// Increases the open file limit if necessary on non-Windows platforms.
 ///
-/// # Arguments
+/// # Parameters
 ///
 /// * `limit` - The limit to set.
 ///
 /// # Returns
 ///
 /// A [`Result`] containing the result of the operation.
+///
+/// # Errors
+///
+/// Returns an error if the limit could not be retrieved or set.
 #[cfg(not(windows))]
-fn set_open_file_limit(limit: u64) -> Result<(), io::Error> {
-    let open_file_limit = rlimit::getrlimit(Resource::NOFILE)?;
+fn set_open_file_limit(limit: u64) -> Result<()> {
+    let open_file_limit =
+        rlimit::getrlimit(Resource::NOFILE).context("Failed to get open file limit")?;
 
     if limit <= open_file_limit.0 {
         return Ok(());
     }
 
-    rlimit::setrlimit(Resource::NOFILE, limit, open_file_limit.1)?;
+    rlimit::setrlimit(Resource::NOFILE, limit, open_file_limit.1)
+        .context("Failed to set open file limit")?;
+
     Ok(())
 }
 
 /// Writes the proxies to a file.
 ///
-/// # Arguments
+/// # Parameters
 ///
 /// * `proxy_type` - The type of proxies.
 /// * `proxies` - The proxies to write to a file.
@@ -112,13 +118,18 @@ fn set_open_file_limit(limit: u64) -> Result<(), io::Error> {
 /// # Returns
 ///
 /// A [`Result`] containing the result of the operation.
+///
+/// # Errors
+///
+/// Returns an error if the proxies folder could not be created,
+/// if the file could not be created, or if the proxies could not be written to the file.
 fn write_proxies_to_file(
     proxy_type: ProxyType,
     proxies: &[Proxy],
     proxies_folder: &Path,
-) -> Result<(), io::Error> {
+) -> Result<()> {
     if !proxies_folder.exists() {
-        fs::create_dir_all(proxies_folder)?;
+        fs::create_dir_all(proxies_folder).context("Failed to create proxies folder")?;
     }
 
     let file_name = match proxy_type {
@@ -126,14 +137,14 @@ fn write_proxies_to_file(
         ProxyType::Socks5 => "socks5.txt",
     };
 
-    let file = File::create(proxies_folder.join(file_name))?;
+    let file = File::create(proxies_folder.join(file_name)).context("Failed to create file")?;
     let mut writer = BufWriter::new(file);
 
     for proxy in proxies {
-        writeln!(writer, "{proxy}")?;
+        writeln!(writer, "{proxy}").context("Failed to write proxy")?;
     }
 
-    writer.flush()?;
+    writer.flush().context("Failed to flush writer")?;
     Ok(())
 }
 
@@ -176,9 +187,9 @@ async fn main() {
     let args = Args::parse();
     let proxy_scraper = ProxyScraper::default();
 
-    set_open_file_limit(args.tasks).expect(
-        "Failed to set open file limit; decreasing the number of tasks should fix this issue",
-    );
+    set_open_file_limit(args.tasks)
+        .context("Decreasing the number of tasks should fix this issue")
+        .unwrap();
 
     let archive_urls = proxy_scraper
         .scrape_archive_urls()

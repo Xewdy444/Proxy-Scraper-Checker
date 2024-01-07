@@ -1,10 +1,10 @@
+use anyhow::{bail, Context, Result};
 use futures::future;
 use indicatif::ProgressBar;
 use scraper::{Html, Selector};
 use serde_json::Value;
 use std::cmp::Ordering;
 use std::collections::HashSet;
-use std::error::Error;
 use std::fmt;
 use std::hash::Hash;
 use std::net::IpAddr;
@@ -74,18 +74,17 @@ impl Proxy {
         }
     }
 
-    /// Parses the proxy into an IP address and port number.
+    /// Returns a tuple containing the IP address and port of the proxy.
     ///
-    /// ## Returns
+    /// ## Errors
     ///
-    /// A [`Result`] containing the IP address and port number if the proxy is valid,
-    /// or an [`Err`] if the proxy is invalid.
-    fn parse_host(&self) -> Result<(IpAddr, u16), Box<dyn Error>> {
+    /// Returns an error if the proxy is invalid.
+    fn parse_host(&self) -> Result<(IpAddr, u16)> {
         let host = self.to_string();
         let parts: Vec<&str> = host.split(':').collect();
 
         if parts.len() != 2 {
-            return Err("Invalid proxy".into());
+            bail!("Invalid proxy: {host}");
         }
 
         let address = IpAddr::from_str(parts[0])?;
@@ -107,11 +106,7 @@ pub struct Proxies {
 }
 
 impl Proxies {
-    /// Creates a new [`Proxies`] instance.
-    ///
-    /// ## Returns
-    ///
-    /// The new [`Proxies`] instance.
+    /// Returns a new [`Proxies`] instance.
     pub fn new() -> Self {
         Self {
             http: HashSet::new(),
@@ -159,15 +154,11 @@ pub struct ProxyScraper {
 }
 
 impl ProxyScraper {
-    /// Creates a new [`ProxyScraper`] instance.
+    /// Returns a new [`ProxyScraper`] instance.
     ///
     /// ## Parameters
     ///
     /// * `client` - The [`reqwest::Client`] to use for making requests.
-    ///
-    /// ## Returns
-    ///
-    /// The new [`ProxyScraper`] instance.
     pub fn new(client: reqwest::Client) -> Self {
         Self { client }
     }
@@ -183,16 +174,22 @@ impl ProxyScraper {
     ///
     /// Returns an error if the request to the <https://checkerproxy.net/getAllProxy> page fails
     /// or if the HTML could not be parsed.
-    pub async fn scrape_archive_urls(&self) -> Result<Vec<String>, Box<dyn Error>> {
+    pub async fn scrape_archive_urls(&self) -> Result<Vec<String>> {
         let response = self
             .client
             .get("https://checkerproxy.net/getAllProxy")
             .send()
-            .await?;
+            .await
+            .context("Failed to get archive URLs")?;
 
         let html = response.text().await?;
         let parser = Html::parse_document(&html);
-        let selector = Selector::parse("li > a")?;
+
+        let selector = match Selector::parse("li > a") {
+            Ok(selector) => selector,
+            Err(_) => bail!("Failed to parse HTML"),
+        };
+
         let mut archive_urls = Vec::new();
 
         for element in parser.select(&selector) {
@@ -231,14 +228,22 @@ impl ProxyScraper {
         &self,
         archive_url: String,
         anonymous_only: bool,
-    ) -> Result<Vec<Proxy>, Box<dyn Error + Send + Sync>> {
-        let response = self.client.get(archive_url).send().await?;
+    ) -> Result<Vec<Proxy>> {
+        let response = self
+            .client
+            .get(&archive_url)
+            .send()
+            .await
+            .with_context(|| {
+                format!("Failed to get proxies from archive API URL: {archive_url}")
+            })?;
+
         let json: Value = serde_json::from_str(&response.text().await?)?;
         let mut proxies = Vec::new();
 
         for proxy_dict in json
             .as_array()
-            .ok_or("Invalid JSON received from archive API URL")?
+            .context("Invalid JSON received from archive API URL")?
         {
             if anonymous_only {
                 let kind = match proxy_dict.get("kind") {
@@ -280,11 +285,7 @@ impl ProxyScraper {
 }
 
 impl Default for ProxyScraper {
-    /// Creates a new [`ProxyScraper`] instance with a 30 second timeout.
-    ///
-    /// ## Returns
-    ///
-    /// The new [`ProxyScraper`] instance.
+    /// Returns a new [`ProxyScraper`] instance with a 30 second timeout.
     fn default() -> Self {
         Self::new(
             reqwest::Client::builder()
@@ -308,16 +309,12 @@ pub struct ProxyChecker {
 }
 
 impl ProxyChecker {
-    /// Creates a new [`ProxyChecker`] instance.
+    /// Returns a new [`ProxyChecker`] instance.
     ///
     /// ## Parameters
     ///
     /// * `semaphore` - The semaphore used to limit the number of concurrent requests.
     /// * `progress_bar` - The progress bar used to display the progress of the proxy checks.
-    ///
-    /// ## Returns
-    ///
-    /// The new [`ProxyChecker`] instance.
     pub fn new(semaphore: Arc<Semaphore>, progress_bar: ProgressBar) -> Self {
         Self {
             semaphore,
@@ -335,23 +332,26 @@ impl ProxyChecker {
     ///
     /// ## Returns
     ///
-    /// A [`Result`] containing the proxy if the check succeeds, or an [`Err`] if an error occurs.
+    /// The proxy if the check succeeds.
     ///
     /// ## Errors
     ///
     /// An error is returned if the [`reqwest::Client`] cannot be built, if the request fails,
     /// or if the HTTP response is an error status code.
-    async fn check_proxy(
-        proxy: Proxy,
-        url: String,
-        timeout: u64,
-    ) -> Result<Proxy, Box<dyn Error + Send + Sync>> {
+    async fn check_proxy(proxy: Proxy, url: String, timeout: u64) -> Result<Proxy> {
         let client = reqwest::Client::builder()
             .proxy(reqwest::Proxy::all(proxy.url())?)
             .timeout(Duration::from_secs(timeout))
             .build()?;
 
-        client.get(url).send().await?.error_for_status()?;
+        client
+            .get(url)
+            .send()
+            .await
+            .context("Request failed")?
+            .error_for_status()
+            .context("Request returned an error status code")?;
+
         Ok(proxy)
     }
 
@@ -365,18 +365,18 @@ impl ProxyChecker {
     ///
     /// ## Returns
     ///
-    /// A [`Result`] containing a [`Vec`] of the working proxies if the checks succeed,
-    /// or an [`Err`] if an error occurs.
+    /// A [`Vec`] of the working proxies.
     ///
     /// ## Errors
     ///
-    /// An error is returned if the `tokio::try_join_all` fails.
+    /// An error is returned if the semaphore has been closed
+    /// or if `futures::try_join_all` fails.
     pub async fn check_proxies(
         &self,
         proxies: HashSet<Proxy>,
         url: String,
         timeout: u64,
-    ) -> Result<Vec<Proxy>, Box<dyn Error>> {
+    ) -> Result<Vec<Proxy>> {
         let mut tasks = Vec::new();
 
         for proxy in proxies {
