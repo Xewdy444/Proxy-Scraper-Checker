@@ -193,10 +193,7 @@ async fn main() {
         .context("Decreasing the number of tasks should fix this issue")
         .unwrap();
 
-    let archive_urls = proxy_scraper
-        .scrape_archive_urls()
-        .await
-        .expect("Failed to scrape archive URLs");
+    let archive_urls = proxy_scraper.scrape_archive_urls().await.unwrap();
 
     let scrape_progress_bar = ProgressBar::new(archive_urls.len() as u64).with_style(
         ProgressStyle::default_bar()
@@ -224,7 +221,7 @@ async fn main() {
 
     let proxies: Proxies = future::try_join_all(scrape_tasks)
         .await
-        .expect("Failed to scrape proxies")
+        .unwrap()
         .into_iter()
         .filter_map(|proxies| proxies.ok())
         .flatten()
@@ -259,7 +256,7 @@ async fn main() {
             let mut working_proxies = proxy_checker
                 .check_proxies(proxies.http, url, args.timeout)
                 .await
-                .expect("Failed to check HTTP proxies");
+                .unwrap();
 
             http_progress_bar.finish_with_message("Finished checking HTTP proxies");
             let check_duration = Duration::from_secs(http_progress_bar.elapsed().as_secs());
@@ -299,7 +296,7 @@ async fn main() {
             let mut working_proxies = proxy_checker
                 .check_proxies(proxies.socks5, url, args.timeout)
                 .await
-                .expect("Failed to check SOCKS5 proxies");
+                .unwrap();
 
             socks5_progress_bar.finish_with_message("Finished checking SOCKS5 proxies");
             let check_duration = Duration::from_secs(socks5_progress_bar.elapsed().as_secs());

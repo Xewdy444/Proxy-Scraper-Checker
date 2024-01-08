@@ -11,7 +11,7 @@ use std::net::IpAddr;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::Semaphore;
+use tokio::sync::{AcquireError, Semaphore};
 
 /// Represents the type of proxy.
 #[derive(Debug, PartialEq)]
@@ -361,8 +361,7 @@ impl ProxyChecker {
     ///
     /// ## Errors
     ///
-    /// An error is returned if the semaphore has been closed
-    /// or if `futures::try_join_all` fails.
+    /// An error is returned if the semaphore has been closed.
     pub async fn check_proxies(
         &self,
         proxies: HashSet<Proxy>,
@@ -386,11 +385,18 @@ impl ProxyChecker {
             tasks.push(task);
         }
 
-        let working_proxies = future::try_join_all(tasks)
-            .await?
-            .into_iter()
-            .flatten()
-            .collect();
+        let results = future::try_join_all(tasks).await?;
+        let mut working_proxies = Vec::new();
+
+        for result in results {
+            match result {
+                Ok(proxy) => working_proxies.push(proxy),
+                Err(err) => match err.downcast_ref::<AcquireError>() {
+                    Some(_) => bail!("Semaphore has been closed"),
+                    None => continue,
+                },
+            }
+        }
 
         Ok(working_proxies)
     }
