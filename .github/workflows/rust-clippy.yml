@@ -2,6 +2,8 @@ name: Analyze With Clippy
 
 on:
   push:
+    branches:
+      - main
     paths:
       - src/**
   pull_request:

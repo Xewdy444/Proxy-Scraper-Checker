@@ -31,8 +31,8 @@ jobs:
           string: ${{ github.repository_owner }}
 
       - name: Get crate version
-        id: crate-version
         uses: colathro/crate-version@1.0.0
+        id: crate-version
         with:
           file: ./Cargo.toml
 
