@@ -25,7 +25,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get repository owner
-        uses: ASzc/change-string-case-action@v5
+        uses: ASzc/change-string-case-action@v6
         id: repo-owner
         with:
           string: ${{ github.repository_owner }}
