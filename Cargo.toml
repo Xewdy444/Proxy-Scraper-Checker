@@ -18,7 +18,7 @@ lto = "fat"
 
 [dependencies]
 anyhow = "1.0.79"
-clap = { version = "4.4.16", features = ["derive"] }
+clap = { version = "4.4.17", features = ["derive"] }
 futures = "0.3.30"
 humantime = "2.1.0"
 indicatif = "0.17.7"
