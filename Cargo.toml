@@ -17,7 +17,7 @@ strip = true
 lto = "fat"
 
 [dependencies]
-anyhow = "1.0.79"
+anyhow = "1.0.80"
 clap = { version = "4.5.0", features = ["derive"] }
 futures = "0.3.30"
 humantime = "2.1.0"
