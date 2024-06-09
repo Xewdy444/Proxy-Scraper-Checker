@@ -74,7 +74,7 @@ fn set_open_file_limit(limit: u64) -> Result<()> {
     }
 
     if limit > 8192 {
-        bail!("The open file limit cannot be greater than 8192 on Windows");
+        bail!("The tasks value cannot be greater than 4096 on Windows");
     }
 
     rlimit::setmaxstdio(limit as u32).context("Failed to set open file limit")?;
@@ -182,6 +182,10 @@ struct Args {
     /// Only save SOCKS5 proxies
     #[arg(long, default_value_t = false, conflicts_with = "http")]
     socks5: bool,
+
+    /// Do not set the open file limit (tasks * 2)
+    #[arg(short, long, default_value_t = false)]
+    no_set_limit: bool,
 }
 
 #[tokio::main]
@@ -189,9 +193,9 @@ async fn main() {
     let args = Args::parse();
     let proxy_scraper = ProxyScraper::default();
 
-    set_open_file_limit(args.tasks)
-        .context("Decreasing the number of tasks should fix this issue")
-        .unwrap();
+    if !args.no_set_limit {
+        set_open_file_limit(args.tasks * 2).unwrap();
+    }
 
     let archive_urls = proxy_scraper.scrape_archive_urls().await.unwrap();
 
