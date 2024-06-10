@@ -74,7 +74,7 @@ fn set_open_file_limit(limit: u64) -> Result<()> {
     }
 
     if limit > 8192 {
-        bail!("The tasks value cannot be greater than 4096 on Windows");
+        bail!("Windows does not support open file limits greater than 8192");
     }
 
     rlimit::setmaxstdio(limit as u32).context("Failed to set open file limit")?;
@@ -194,7 +194,9 @@ async fn main() {
     let proxy_scraper = ProxyScraper::default();
 
     if !args.no_set_limit {
-        set_open_file_limit(args.tasks * 2).unwrap();
+        set_open_file_limit(args.tasks * 2)
+            .context("You can pass the --no-set-limit flag at your own risk")
+            .unwrap();
     }
 
     let archive_urls = proxy_scraper.scrape_archive_urls().await.unwrap();
