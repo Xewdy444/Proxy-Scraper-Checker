@@ -34,5 +34,6 @@ Options:
   -a, --anonymous          Only save anonymous proxies
       --http               Only save HTTP proxies
       --socks5             Only save SOCKS5 proxies
+  -n, --no-set-limit       Do not set the open file limit (tasks * 2)
   -h, --help               Print help
 ```
