@@ -19,7 +19,7 @@ lto = "fat"
 [dependencies]
 anyhow = "1.0.89"
 clap = { version = "4.5.19", features = ["derive"] }
-futures = "0.3.30"
+futures = "0.3.31"
 humantime = "2.1.0"
 indicatif = "0.17.8"
 reqwest = { version = "0.12.8", features = ["socks"] }
