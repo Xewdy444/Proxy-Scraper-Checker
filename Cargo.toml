@@ -24,7 +24,7 @@ humantime = "2.1.0"
 indicatif = "0.17.8"
 reqwest = { version = "0.12.9", features = ["socks"] }
 rlimit = "0.10.2"
-scraper = "0.20.0"
+scraper = "0.21.0"
 serde_json = "1.0.132"
 tabled = "0.16.0"
 tokio = { version = "1.41.0", features = ["full"] }
