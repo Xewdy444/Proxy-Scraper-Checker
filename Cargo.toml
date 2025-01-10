@@ -27,4 +27,4 @@ rlimit = "0.10.2"
 scraper = "0.22.0"
 serde_json = "1.0.135"
 tabled = "0.17.0"
-tokio = { version = "1.42.0", features = ["full"] }
+tokio = { version = "1.43.0", features = ["full"] }
