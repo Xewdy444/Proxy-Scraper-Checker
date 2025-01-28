@@ -21,7 +21,7 @@ anyhow = "1.0.95"
 clap = { version = "4.5.27", features = ["derive"] }
 futures = "0.3.31"
 humantime = "2.1.0"
-indicatif = "0.17.9"
+indicatif = "0.17.10"
 reqwest = { version = "0.12.12", features = ["socks"] }
 rlimit = "0.10.2"
 scraper = "0.22.0"
