@@ -26,5 +26,5 @@ reqwest = { version = "0.12.12", features = ["socks"] }
 rlimit = "0.10.2"
 scraper = "0.22.0"
 serde_json = "1.0.138"
-tabled = "0.17.0"
+tabled = "0.18.0"
 tokio = { version = "1.43.0", features = ["full"] }
