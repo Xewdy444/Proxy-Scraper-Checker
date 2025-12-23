@@ -22,7 +22,7 @@ clap = { version = "4.5.53", features = ["derive"] }
 futures = "0.3.31"
 humantime = "2.3.0"
 indicatif = "0.18.3"
-reqwest = { version = "0.12.26", features = ["socks"] }
+reqwest = { version = "0.12.28", features = ["socks"] }
 rlimit = "0.10.2"
 scraper = "0.25.0"
 serde_json = "1.0.146"
