@@ -1,3 +1,6 @@
+> [!NOTE]  
+> This tool is no longer working nor necessary after the checkerproxy.net website was improved.
+
 # Proxy-Scraper-Checker
 A command-line tool for scraping and checking HTTP and SOCKS5 proxies from the [checkerproxy.net proxies archive](https://checkerproxy.net/getAllProxy). By default, the working proxies are written to `proxies/http.txt` and `proxies/socks5.txt` according to the respective proxy type.
 
